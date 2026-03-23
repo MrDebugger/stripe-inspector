@@ -238,7 +238,7 @@ function renderPermissionScan(data) {
         out of ${data.total_endpoints || 0} endpoints
     </div>`;
 
-    html += '<table class="data-table"><tr><th>Status</th><th>Endpoint</th></tr>';
+    html += '<div class="table-scroll"><table class="data-table"><tr><th>Status</th><th>Endpoint</th></tr>';
     for (const ep of allowed) {
         html += `<tr><td style="color:var(--green);font-weight:600;">OK</td><td>${esc(ep)}</td></tr>`;
     }
@@ -248,7 +248,7 @@ function renderPermissionScan(data) {
     for (const err of errors) {
         html += `<tr><td style="color:var(--yellow);font-weight:600;">??</td><td>${esc(err.endpoint || '')} (${esc(err.error || '')})</td></tr>`;
     }
-    html += '</table>';
+    html += '</table></div>';
     return html;
 }
 
@@ -262,7 +262,9 @@ function renderKV(obj, prefix = '') {
         } else if (Array.isArray(val)) {
             html += `<div class="kv-row"><div class="kv-key">${esc(key)}</div><div class="kv-val">${esc(val.join(', '))}</div></div>`;
         } else {
-            html += `<div class="kv-row"><div class="kv-key">${esc(key)}</div><div class="kv-val">${esc(String(val))}</div></div>`;
+            let display = String(val);
+            if (TIMESTAMP_FIELDS.has(key) && typeof val === 'number') display = formatTs(val) || display;
+            html += `<div class="kv-row"><div class="kv-key">${esc(key)}</div><div class="kv-val">${esc(display)}</div></div>`;
         }
     }
     return html;
@@ -280,10 +282,20 @@ function renderBalance(data) {
     return html;
 }
 
+const TIMESTAMP_FIELDS = new Set([
+    'created', 'arrival_date', 'current_period_start', 'current_period_end',
+]);
+
+function formatTs(val) {
+    if (typeof val !== 'number' || val < 1000000000 || val > 9999999999) return null;
+    const d = new Date(val * 1000);
+    return d.toISOString().replace('T', ' ').slice(0, 16);
+}
+
 function renderTable(items) {
     if (!items.length) return '';
     const cols = Object.keys(items[0]).filter(k => k !== 'metadata');
-    let html = '<table class="data-table"><tr>';
+    let html = '<div class="table-scroll"><table class="data-table"><tr>';
     for (const col of cols) html += `<th>${esc(col)}</th>`;
     html += '</tr>';
     for (const item of items.slice(0, 20)) {
@@ -291,12 +303,13 @@ function renderTable(items) {
         for (const col of cols) {
             let val = item[col];
             if (val === null || val === undefined) val = '';
+            else if (TIMESTAMP_FIELDS.has(col) && typeof val === 'number') val = formatTs(val) || val;
             else if (typeof val === 'object') val = JSON.stringify(val);
             html += `<td title="${esc(String(val))}">${esc(String(val))}</td>`;
         }
         html += '</tr>';
     }
-    html += '</table>';
+    html += '</table></div>';
     return html;
 }
 
