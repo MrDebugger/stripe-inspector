@@ -38,7 +38,6 @@ dependencies = [
 
 [project.optional-dependencies]
 pdf = ["weasyprint>=60.0"]
-cpanel = ["a2wsgi>=1.7.0"]
 
 [project.urls]
 Homepage = "https://github.com/mrdebugger/stripe-inspector"
