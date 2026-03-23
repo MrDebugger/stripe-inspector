@@ -16,27 +16,45 @@
         </div>
 
         <div class="input-section">
-            <div class="input-row">
-                <div class="input-group" style="flex:3;">
+            <!-- Key input + Inspect button -->
+            <div style="display:flex;gap:10px;">
+                <div class="input-group" style="flex:1;">
                     <label>Stripe API Key</label>
                     <input type="text" id="keyInput" placeholder="sk_test_... or sk_live_..." autocomplete="off" spellcheck="false">
                 </div>
-                <div class="input-group" style="flex:1;">
-                    <label>Auth Token (optional)</label>
-                    <input type="password" id="tokenInput" placeholder="Bearer token" autocomplete="off">
-                </div>
-                <button class="btn btn-primary" id="inspectBtn">Inspect</button>
-                <label class="deep-toggle" title="Fetch all pages instead of first 100 items">
-                    <input type="checkbox" id="deepToggle">
-                    <span>Deep</span>
-                </label>
+                <button class="btn btn-primary" id="inspectBtn" style="align-self:flex-end;">Inspect</button>
             </div>
-            <div class="modules-section">
-                <div class="modules-header" onclick="document.getElementById('modulesGrid').classList.toggle('open')">
-                    <label>Modules</label>
-                    <span class="modules-toggle" id="modulesCount">All selected</span>
+
+            <!-- Toolbar row -->
+            <div class="toolbar">
+                <div class="toolbar-left">
+                    <label class="toggle-switch" title="Fetch all pages instead of first 100">
+                        <input type="checkbox" id="deepToggle">
+                        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+                        <span class="toggle-label">Deep</span>
+                    </label>
+                    <span class="toolbar-divider"></span>
+                    <span class="toolbar-link" id="modulesToggle" onclick="document.getElementById('modulesGrid').classList.toggle('open'); updateModulesCount();">
+                        Modules: <span id="modulesCount">All selected</span> <span class="arrow">&#9662;</span>
+                    </span>
                 </div>
-                <div class="modules-grid" id="modulesGrid">
+                <div class="toolbar-right">
+                    <span class="toolbar-link" onclick="document.getElementById('tokenSection').classList.toggle('open')">
+                        &#128274; Auth token
+                    </span>
+                </div>
+            </div>
+
+            <!-- Auth token (hidden by default) -->
+            <div class="collapsible" id="tokenSection">
+                <div class="input-group">
+                    <input type="password" id="tokenInput" placeholder="Bearer token (for secured instances)" autocomplete="off">
+                </div>
+            </div>
+
+            <!-- Modules grid (hidden by default) -->
+            <div class="collapsible" id="modulesGrid">
+                <div class="modules-grid-inner">
                     <label class="module-chip"><input type="checkbox" value="account" checked><span>account</span></label>
                     <label class="module-chip"><input type="checkbox" value="balance" checked><span>balance</span></label>
                     <label class="module-chip"><input type="checkbox" value="customers" checked><span>customers</span></label>
