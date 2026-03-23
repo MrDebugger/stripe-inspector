@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+.eggs/
+.venv/
+venv/
+.env
+.git/
+.superpowers/
+docs/
+tests/
+assets/
+*.md
+!README.md

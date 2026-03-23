@@ -54,6 +54,16 @@ For PDF report support:
 pip install stripe-inspector[pdf]
 ```
 
+Or with Docker:
+
+```bash
+docker compose up
+# Open http://localhost:8000
+
+# With auth token:
+TOKEN=mysecret docker compose up
+```
+
 ## Quick Start
 
 ### CLI

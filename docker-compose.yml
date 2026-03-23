@@ -1,0 +1,7 @@
+services:
+  stripe-inspector:
+    build: .
+    ports:
+      - "8000:8000"
+    # Default: no auth. To add auth:
+    # command: ["serve", "--host", "0.0.0.0", "--port", "8000", "--token", "mysecret"]
