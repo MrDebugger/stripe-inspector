@@ -66,10 +66,11 @@ def mask_key(key: str) -> str:
 
 
 class StripeInspector:
-    def __init__(self, key: str, modules: Optional[list[str]] = None):
+    def __init__(self, key: str, modules: Optional[list[str]] = None, deep: bool = False):
         self.key = key
         self.key_type = detect_key_type(key)
         self.masked_key = mask_key(key)
+        self.deep = deep
         self.modules_to_run = modules or list(ALL_MODULES.keys())
 
     def validate_key(self) -> bool:
@@ -103,7 +104,12 @@ class StripeInspector:
                 progress_callback(name)
 
             try:
-                data = module.inspect(self.key)
+                import inspect as _inspect
+                sig = _inspect.signature(module.inspect)
+                if 'deep' in sig.parameters:
+                    data = module.inspect(self.key, deep=self.deep)
+                else:
+                    data = module.inspect(self.key)
                 result["modules"][name] = {
                     "success": True,
                     "data": data,

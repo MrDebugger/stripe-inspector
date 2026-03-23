@@ -1,13 +1,19 @@
 """Subscriptions module."""
 
-from stripe_inspector.modules._base import stripe_get
+from stripe_inspector.modules._base import stripe_get, stripe_get_all
 
 
-def inspect(key: str) -> dict:
-    data = stripe_get(key, "/v1/subscriptions", {"limit": 100})
+def inspect(key: str, deep: bool = False) -> dict:
+    if deep:
+        items = stripe_get_all(key, "/v1/subscriptions")
+        has_more = False
+    else:
+        data = stripe_get(key, "/v1/subscriptions", {"limit": 100})
+        items = data.get("data", [])
+        has_more = data.get("has_more", False)
 
     subs = []
-    for s in data.get("data", []):
+    for s in items:
         subs.append({
             "id": s.get("id"),
             "customer": s.get("customer"),
@@ -21,6 +27,6 @@ def inspect(key: str) -> dict:
 
     return {
         "count": len(subs),
-        "has_more": data.get("has_more", False),
+        "has_more": has_more,
         "subscriptions": subs,
     }

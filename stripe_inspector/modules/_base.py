@@ -39,5 +39,32 @@ def stripe_get(key: str, endpoint: str, params: dict = None) -> dict:
     return resp.json()
 
 
+def stripe_get_all(key: str, endpoint: str, params: dict = None, max_pages: int = 50) -> list:
+    """Fetch all pages of a paginated Stripe list endpoint.
+
+    Returns a flat list of all items across pages. Stops at max_pages to
+    prevent runaway pagination (default 50 pages = up to 5000 items).
+    """
+    params = dict(params or {})
+    params.setdefault("limit", 100)
+
+    all_items = []
+    pages = 0
+
+    while pages < max_pages:
+        data = stripe_get(key, endpoint, params)
+        items = data.get("data", [])
+        all_items.extend(items)
+        pages += 1
+
+        if not data.get("has_more") or not items:
+            break
+
+        # Set cursor for next page
+        params["starting_after"] = items[-1]["id"]
+
+    return all_items
+
+
 def get_rate_limit_info() -> dict:
     return dict(rate_limit_info)

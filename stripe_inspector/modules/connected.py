@@ -1,13 +1,19 @@
 """Connected accounts module (Stripe Connect)."""
 
-from stripe_inspector.modules._base import stripe_get
+from stripe_inspector.modules._base import stripe_get, stripe_get_all
 
 
-def inspect(key: str) -> dict:
-    data = stripe_get(key, "/v1/accounts", {"limit": 100})
+def inspect(key: str, deep: bool = False) -> dict:
+    if deep:
+        items = stripe_get_all(key, "/v1/accounts")
+        has_more = False
+    else:
+        data = stripe_get(key, "/v1/accounts", {"limit": 100})
+        items = data.get("data", [])
+        has_more = data.get("has_more", False)
 
     accounts = []
-    for a in data.get("data", []):
+    for a in items:
         accounts.append({
             "id": a.get("id"),
             "email": a.get("email"),
@@ -20,6 +26,6 @@ def inspect(key: str) -> dict:
 
     return {
         "count": len(accounts),
-        "has_more": data.get("has_more", False),
+        "has_more": has_more,
         "accounts": accounts,
     }

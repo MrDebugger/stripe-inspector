@@ -18,6 +18,7 @@ STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 class InspectRequest(BaseModel):
     key: str
     modules: Optional[list[str]] = None
+    deep: bool = False
 
 
 class ReportRequest(BaseModel):
@@ -45,7 +46,7 @@ def create_app(token: Optional[str] = None) -> FastAPI:
     async def inspect_key(req: InspectRequest, authorization: Optional[str] = Header(None)):
         verify_token(authorization)
 
-        inspector = StripeInspector(req.key, modules=req.modules)
+        inspector = StripeInspector(req.key, modules=req.modules, deep=req.deep)
         if not inspector.validate_key():
             raise HTTPException(status_code=400, detail="Invalid key format")
 

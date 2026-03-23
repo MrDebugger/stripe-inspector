@@ -285,6 +285,7 @@ def inspect(
     report: Optional[str] = typer.Option(None, "--report", "-r", help="Generate HTML report to file"),
     pdf: Optional[str] = typer.Option(None, "--pdf", help="Generate PDF report to file"),
     modules: Optional[str] = typer.Option(None, "--modules", "-m", help="Comma-separated modules to run"),
+    deep: bool = typer.Option(False, "--deep", "-d", help="Fetch all pages (not just first 100)"),
     no_color: bool = typer.Option(False, "--no-color", help="Disable colored output"),
 ):
     """Inspect a Stripe API key and enumerate accessible data."""
@@ -300,11 +301,14 @@ def inspect(
             console.print(f"[dim]Available: {', '.join(ALL_MODULES.keys())}[/dim]")
             raise typer.Exit(1)
 
-    inspector = StripeInspector(key, modules=module_list)
+    inspector = StripeInspector(key, modules=module_list, deep=deep)
 
     if not inspector.validate_key():
         console.print("[red]Invalid key format.[/red] Expected: sk_test_*, sk_live_*, rk_test_*, rk_live_*")
         raise typer.Exit(1)
+
+    if deep:
+        console.print("[bold yellow]DEEP MODE: Fetching all pages (this may take a while).[/bold yellow]\n")
 
     if inspector.key_type and "live" in inspector.key_type:
         console.print("[bold red]WARNING: This is a LIVE key. Data accessed is real.[/bold red]\n")
@@ -417,6 +421,7 @@ def batch(
     output: str = typer.Option("table", "--output", "-o", help="Output format: table, json"),
     report_dir: Optional[str] = typer.Option(None, "--report-dir", help="Directory to save HTML reports per key"),
     modules: Optional[str] = typer.Option(None, "--modules", "-m", help="Comma-separated modules to run"),
+    deep: bool = typer.Option(False, "--deep", "-d", help="Fetch all pages"),
 ):
     """Batch inspect multiple Stripe keys from a file."""
     import os
@@ -444,7 +449,7 @@ def batch(
     all_results = []
 
     for i, key in enumerate(keys, 1):
-        inspector = StripeInspector(key, modules=module_list)
+        inspector = StripeInspector(key, modules=module_list, deep=deep)
 
         if not inspector.validate_key():
             console.print(f"[{i}/{len(keys)}] [red]Invalid key: {inspector.masked_key}[/red]")

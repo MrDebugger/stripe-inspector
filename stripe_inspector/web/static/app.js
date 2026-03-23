@@ -57,8 +57,10 @@ async function runInspection() {
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     const total = document.querySelectorAll('.module-chip input').length;
+    const deep = document.getElementById('deepToggle').checked;
     const body = { key };
     if (modules.length < total) body.modules = modules;
+    if (deep) body.deep = true;
 
     try {
         const resp = await fetch(`${API_BASE}/api/inspect`, {

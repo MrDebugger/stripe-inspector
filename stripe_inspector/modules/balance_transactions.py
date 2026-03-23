@@ -1,13 +1,19 @@
 """Balance transactions module."""
 
-from stripe_inspector.modules._base import stripe_get
+from stripe_inspector.modules._base import stripe_get, stripe_get_all
 
 
-def inspect(key: str) -> dict:
-    data = stripe_get(key, "/v1/balance_transactions", {"limit": 100})
+def inspect(key: str, deep: bool = False) -> dict:
+    if deep:
+        items = stripe_get_all(key, "/v1/balance_transactions")
+        has_more = False
+    else:
+        data = stripe_get(key, "/v1/balance_transactions", {"limit": 100})
+        items = data.get("data", [])
+        has_more = data.get("has_more", False)
 
     txns = []
-    for t in data.get("data", []):
+    for t in items:
         txns.append({
             "id": t.get("id"),
             "amount": (t.get("amount", 0) or 0) / 100,
@@ -23,6 +29,6 @@ def inspect(key: str) -> dict:
 
     return {
         "count": len(txns),
-        "has_more": data.get("has_more", False),
+        "has_more": has_more,
         "transactions": txns,
     }

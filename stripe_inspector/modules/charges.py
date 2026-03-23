@@ -1,16 +1,22 @@
 """Charges module."""
 
-from stripe_inspector.modules._base import stripe_get
+from stripe_inspector.modules._base import stripe_get, stripe_get_all
 
 
-def inspect(key: str) -> dict:
-    data = stripe_get(key, "/v1/charges", {"limit": 100})
+def inspect(key: str, deep: bool = False) -> dict:
+    if deep:
+        items = stripe_get_all(key, "/v1/charges")
+        has_more = False
+    else:
+        data = stripe_get(key, "/v1/charges", {"limit": 100})
+        items = data.get("data", [])
+        has_more = data.get("has_more", False)
 
     charges = []
     total_amount = 0
     currencies = set()
 
-    for c in data.get("data", []):
+    for c in items:
         amount = (c.get("amount", 0) or 0) / 100
         currency = c.get("currency", "")
         total_amount += amount
@@ -39,7 +45,7 @@ def inspect(key: str) -> dict:
 
     return {
         "count": len(charges),
-        "has_more": data.get("has_more", False),
+        "has_more": has_more,
         "total_amount": total_amount,
         "currencies": list(currencies),
         "charges": charges,

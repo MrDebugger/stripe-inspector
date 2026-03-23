@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-03-24
+
+### Added
+- **Deep pagination** — `--deep` flag fetches all pages instead of first 100 items (up to 5000 per module)
+- Deep mode toggle in web UI and API (`deep: true` in request body)
+- `stripe_get_all()` base function for paginated Stripe API calls with cursor-based pagination
+- Deep mode support in batch command
+
 ## [0.3.0] - 2026-03-24
 
 ### Added
