@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.1] - 2026-03-24
+
+### Changed
+- Renamed "Report" to "Inspection" throughout the UI and templates for consistent branding
+- Share flow uses custom modal with warning instead of browser confirm dialog
+- Actions bar (Copy JSON, Download, Share) now renders at top and bottom of results
+- Shared inspection page has sticky toolbar with "New Inspection" and "GitHub" buttons
+- API routes renamed: `/api/report/share` → `/api/inspection/share`, `/report/<id>` → `/inspection/<id>`
+
+### Fixed
+- Scan duration not showing in web UI (SSE stream was missing `duration_seconds`)
+- HTML report not rendering disputes, refunds, balance_transactions, coupons (missing list keys in template)
+- HTML report showing permission_scan as raw key-value (added dedicated renderer)
+- Share modal resets properly when closed and reopened
+
 ## [0.5.0] - 2026-03-24
 
 ### Added

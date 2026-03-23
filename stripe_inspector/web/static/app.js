@@ -115,6 +115,9 @@ function renderResults(result) {
     resultsEl.style.display = 'block';
     let html = '';
 
+    // Actions bar (top)
+    html += renderActionsBar();
+
     // Key badge
     const isLive = result.is_live;
     const badgeClass = isLive ? 'live' : 'test';
@@ -194,13 +197,8 @@ function renderResults(result) {
         html += `<div style="font-size:12px;color:var(--text-dim);margin-top:12px;">${footerParts.join(' | ')}</div>`;
     }
 
-    // Actions
-    html += `<div class="actions-bar">
-        <button class="btn btn-outline" onclick="copyJSON()">Copy JSON</button>
-        <button class="btn btn-outline" onclick="downloadJSON()">Download JSON</button>
-        <button class="btn btn-outline" onclick="downloadReport()">Download HTML Report</button>
-        <button class="btn btn-outline" onclick="shareReport()">Share Report</button>
-    </div>`;
+    // Actions bar (bottom)
+    html += renderActionsBar();
 
     resultsContent.innerHTML = html;
 }
@@ -313,7 +311,7 @@ function downloadJSON() {
     download(blob, `stripe-inspector-${Date.now()}.json`);
 }
 
-async function downloadReport() {
+async function downloadInspection() {
     if (!currentResult) return;
     const token = tokenInput.value.trim();
     const headers = { 'Content-Type': 'application/json' };
@@ -384,24 +382,56 @@ function fallbackCopy(text, onSuccess) {
     document.body.removeChild(ta);
 }
 
-async function shareReport() {
+function renderActionsBar() {
+    return `<div class="actions-bar">
+        <button class="btn btn-outline" onclick="copyJSON()">Copy JSON</button>
+        <button class="btn btn-outline" onclick="downloadJSON()">Download JSON</button>
+        <button class="btn btn-outline" onclick="downloadInspection()">Download Inspection</button>
+        <button class="btn btn-outline" onclick="showShareModal()">Share Inspection</button>
+    </div>`;
+}
+
+function showShareModal() {
     if (!currentResult) return;
+    document.getElementById('shareModal').classList.add('open');
+}
+
+async function confirmShare() {
+    if (!currentResult) return;
+
+    const shareBtn = document.getElementById('shareConfirmBtn');
+    shareBtn.disabled = true;
+    shareBtn.textContent = 'Sharing...';
+
     const token = tokenInput.value.trim();
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
     try {
-        const resp = await fetch(`${API_BASE}/api/report`, {
+        const resp = await fetch(`${API_BASE}/api/inspection/share`, {
             method: 'POST',
             headers,
             body: JSON.stringify({ result: currentResult }),
         });
-        const html = await resp.text();
-        const blob = new Blob([html], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        window.open(url, '_blank');
+        const data = await resp.json();
+        const fullUrl = window.location.origin + data.url;
+
+        // Show link in modal
+        document.getElementById('shareModalBody').innerHTML = `
+            <div style="text-align:center;padding:12px 0;">
+                <div style="font-size:14px;color:var(--green);font-weight:600;margin-bottom:12px;">Inspection shared successfully</div>
+                <div style="background:var(--bg-input);border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:12px;font-family:'JetBrains Mono',monospace;font-size:13px;word-break:break-all;color:var(--text-bright);">${esc(fullUrl)}</div>
+                <div style="display:flex;gap:8px;justify-content:center;">
+                    <button class="btn btn-primary" onclick="fallbackCopy('${fullUrl}', () => { this.textContent='Copied!'; this.style.background='var(--green)'; })">Copy Link</button>
+                    <a class="btn btn-outline" href="${fullUrl}" target="_blank" style="text-decoration:none;display:inline-flex;align-items:center;">Open</a>
+                </div>
+                <div style="font-size:11px;color:var(--text-dim);margin-top:10px;">Link expires in 24 hours</div>
+            </div>`;
+        shareBtn.style.display = 'none';
     } catch (err) {
-        alert('Failed to generate report: ' + err.message);
+        shareBtn.disabled = false;
+        shareBtn.textContent = 'Share Inspection';
+        document.getElementById('shareModalBody').innerHTML += `<div style="color:var(--red);font-size:13px;margin-top:8px;">Failed: ${esc(err.message)}</div>`;
     }
 }
 

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StripeInspector Report</title>
+<title>StripeInspector Inspection</title>
 <style>
 :root{--bg:#0f1117;--card:#1a1d27;--border:#2d3140;--accent:#6c63ff;--green:#10b981;--red:#ef4444;--yellow:#f59e0b;--text:#e4e4e7;--dim:#71717a;--bright:#fafafa}
 *{margin:0;padding:0;box-sizing:border-box}
@@ -33,7 +33,7 @@ td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04);max-width:220p
 </head>
 <body>
 <div class="container">
-<h1>Stripe<span>Inspector</span> Report</h1>
+<h1>Stripe<span>Inspector</span> Inspection</h1>
 <div class="meta">Generated: {{ generated_at }}</div>
 
 {% set is_live = result.is_live %}
@@ -75,8 +75,27 @@ td{padding:6px 10px;border-bottom:1px solid rgba(255,255,255,.04);max-width:220p
                 <tr><td>Pending</td><td>{{ "%.2f"|format(item.amount) }}</td><td>{{ item.currency|upper }}</td></tr>
             {% endfor %}
             </table>
+        {% elif name == 'permission_scan' %}
+            <div style="font-size:13px;margin-bottom:8px;">
+                <span style="color:var(--green)">{{ data.get('allowed_count', 0) }} allowed</span> /
+                <span style="color:var(--red)">{{ data.get('denied_count', 0) }} denied</span> /
+                <span style="color:var(--yellow)">{{ data.get('error_count', 0) }} errors</span>
+                out of {{ data.get('total_endpoints', 0) }} endpoints
+            </div>
+            <table>
+                <tr><th>Status</th><th>Endpoint</th></tr>
+                {% for ep in data.get('allowed', []) %}
+                    <tr><td style="color:var(--green);font-weight:600;">OK</td><td>{{ ep }}</td></tr>
+                {% endfor %}
+                {% for ep in data.get('denied', []) %}
+                    <tr><td style="color:var(--red);font-weight:600;">NO</td><td>{{ ep }}</td></tr>
+                {% endfor %}
+                {% for err in data.get('errors', []) %}
+                    <tr><td style="color:var(--yellow);font-weight:600;">??</td><td>{{ err.endpoint }} ({{ err.error }})</td></tr>
+                {% endfor %}
+            </table>
         {% else %}
-            {% set list_keys = ['customers','charges','intents','products','payouts','subscriptions','invoices','endpoints','events','accounts'] %}
+            {% set list_keys = ['customers','charges','intents','products','payouts','subscriptions','invoices','endpoints','events','accounts','disputes','refunds','transactions','coupons'] %}
             {% set ns = namespace(found=false) %}
             {% for lk in list_keys %}
                 {% if data[lk] is defined and data[lk] is iterable and data[lk] is not string and not ns.found %}

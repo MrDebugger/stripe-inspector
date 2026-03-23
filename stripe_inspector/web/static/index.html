@@ -201,6 +201,45 @@ stripe-inspector serve --port 9000 --token mysecret</code></pre>
         </div>
     </div>
 
+    <!-- Share Modal -->
+    <div class="modal-overlay" id="shareModal" onclick="if(event.target===this){this.classList.remove('open');resetShareModal();}">
+        <div class="modal-box" style="max-width:500px;">
+            <div class="modal-header">
+                <h3>Share Inspection</h3>
+                <span class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open');resetShareModal();">&times;</span>
+            </div>
+            <div class="modal-body" id="shareModalBody">
+                <p>This will save the inspection results on the server running this StripeInspector instance.</p>
+                <ul>
+                    <li><strong>No API keys</strong> are included — keys are always masked</li>
+                    <li>The link is accessible to anyone with access to this server</li>
+                    <li>The link <strong>expires after 24 hours</strong></li>
+                </ul>
+                <p style="color:var(--text-dim);font-size:12px;margin-top:12px;">Only share with people authorized to view the inspection results.</p>
+            </div>
+            <div style="padding:0 20px 16px;display:flex;gap:8px;justify-content:flex-end;">
+                <button class="btn btn-outline" onclick="this.closest('.modal-overlay').classList.remove('open');resetShareModal();">Cancel</button>
+                <button class="btn btn-primary" id="shareConfirmBtn" onclick="confirmShare()">Share Inspection</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/static/app.js"></script>
+    <script>
+    function resetShareModal() {
+        document.getElementById('shareModalBody').innerHTML = `
+            <p>This will save the inspection results on the server running this StripeInspector instance.</p>
+            <ul>
+                <li><strong>No API keys</strong> are included — keys are always masked</li>
+                <li>The link is accessible to anyone with access to this server</li>
+                <li>The link <strong>expires after 24 hours</strong></li>
+            </ul>
+            <p style="color:var(--text-dim);font-size:12px;margin-top:12px;">Only share with people authorized to view the inspection results.</p>`;
+        const btn = document.getElementById('shareConfirmBtn');
+        btn.disabled = false;
+        btn.textContent = 'Share Inspection';
+        btn.style.display = '';
+    }
+    </script>
 </body>
 </html>

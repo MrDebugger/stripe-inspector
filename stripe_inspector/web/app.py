@@ -3,6 +3,7 @@
 import json
 import os
 import time
+import uuid
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Header, Query, Request
@@ -13,6 +14,10 @@ from pydantic import BaseModel
 from stripe_inspector import __version__
 from stripe_inspector.core import StripeInspector, ALL_MODULES
 from stripe_inspector.report import generate_html_report
+
+# In-memory report store {id: {"html": str, "created": float}}
+_reports: dict[str, dict] = {}
+REPORT_MAX_AGE = 86400  # 24 hours
 
 STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
 
@@ -69,6 +74,8 @@ def create_app(token: Optional[str] = None) -> FastAPI:
             import inspect as _inspect
             from stripe_inspector.modules._base import get_rate_limit_info
 
+            start_time = time.time()
+
             result = {
                 "key_type": inspector.key_type,
                 "masked_key": inspector.masked_key,
@@ -122,6 +129,7 @@ def create_app(token: Optional[str] = None) -> FastAPI:
             from stripe_inspector.pii import scan_pii
             result["pii"] = scan_pii(result)
             result["rate_limit"] = get_rate_limit_info()
+            result["duration_seconds"] = round(time.time() - start_time, 2)
 
             # Send final complete result
             done_event = {"type": "done", "result": result}
@@ -134,6 +142,50 @@ def create_app(token: Optional[str] = None) -> FastAPI:
         verify_token(authorization)
         html = generate_html_report(req.result)
         return HTMLResponse(content=html)
+
+    @app.post("/api/inspection/share")
+    async def share_inspection(req: ReportRequest, authorization: Optional[str] = Header(None)):
+        """Save inspection on server and return a shareable URL."""
+        verify_token(authorization)
+
+        # Clean expired
+        now = time.time()
+        expired = [k for k, v in _reports.items() if now - v["created"] > REPORT_MAX_AGE]
+        for k in expired:
+            del _reports[k]
+
+        html = generate_html_report(req.result)
+
+        # Inject toolbar into the report
+        toolbar_html = '''
+        <div style="position:sticky;top:0;z-index:50;background:var(--bg);border-bottom:1px solid var(--border);padding:10px 20px;display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:14px;font-weight:600;color:var(--bright,#fafafa);">Stripe<span style="color:#6c63ff;">Inspector</span> &mdash; Shared Inspection</div>
+            <div style="display:flex;gap:8px;">
+                <a href="/" style="font-size:12px;color:#6c63ff;text-decoration:none;padding:6px 14px;border:1px solid #2d3140;border-radius:6px;">New Inspection</a>
+                <a href="https://github.com/mrdebugger/stripe-inspector" target="_blank" style="font-size:12px;color:#71717a;text-decoration:none;padding:6px 14px;border:1px solid #2d3140;border-radius:6px;">GitHub</a>
+            </div>
+        </div>
+        '''
+        # Insert toolbar after <body>
+        html = html.replace('<body>', '<body>' + toolbar_html, 1)
+
+        report_id = uuid.uuid4().hex[:12]
+        _reports[report_id] = {"html": html, "created": now}
+
+        return JSONResponse({"id": report_id, "url": f"/inspection/{report_id}"})
+
+    @app.get("/inspection/{report_id}", response_class=HTMLResponse)
+    async def view_shared_inspection(report_id: str):
+        """View a shared inspection by ID."""
+        report = _reports.get(report_id)
+        if not report:
+            raise HTTPException(status_code=404, detail="Inspection not found or expired")
+
+        if time.time() - report["created"] > REPORT_MAX_AGE:
+            del _reports[report_id]
+            raise HTTPException(status_code=404, detail="Inspection expired")
+
+        return HTMLResponse(content=report["html"])
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
