@@ -66,43 +66,67 @@ async function runInspection() {
     if (deep) body.deep = true;
 
     try {
-        const resp = await fetch(`${API_BASE}/api/inspect/stream`, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify(body),
-        });
-        if (!resp.ok) {
-            const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
-            throw new Error(err.detail || `HTTP ${resp.status}`);
+        // Try SSE streaming first, fall back to regular POST
+        let useStream = true;
+        let resp;
+
+        try {
+            resp = await fetch(`${API_BASE}/api/inspect/stream`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+            });
+            if (!resp.ok || !resp.headers.get('content-type')?.includes('text/event-stream')) {
+                useStream = false;
+            }
+        } catch (e) {
+            useStream = false;
         }
 
-        const reader = resp.body.getReader();
-        const decoder = new TextDecoder();
-        let buffer = '';
+        if (useStream) {
+            // SSE streaming mode
+            const reader = resp.body.getReader();
+            const decoder = new TextDecoder();
+            let buffer = '';
 
-        while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
 
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split('\n');
-            buffer = lines.pop();
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop();
 
-            for (const line of lines) {
-                if (!line.startsWith('data: ')) continue;
-                const data = JSON.parse(line.slice(6));
+                for (const line of lines) {
+                    if (!line.startsWith('data: ')) continue;
+                    const data = JSON.parse(line.slice(6));
 
-                if (data.type === 'progress') {
-                    statusEl.innerHTML = `<span class="spinner"></span> Scanning <strong>${esc(data.module)}</strong>... (${data.current}/${data.total})`;
-                } else if (data.type === 'module') {
-                    // Module completed — could render incrementally here
-                } else if (data.type === 'done') {
-                    currentResult = data.result;
-                    statusEl.style.display = 'none';
-                    saveToHistory(currentResult);
-                    renderResults(currentResult);
+                    if (data.type === 'progress') {
+                        statusEl.innerHTML = `<span class="spinner"></span> Scanning <strong>${esc(data.module)}</strong>... (${data.current}/${data.total})`;
+                    } else if (data.type === 'done') {
+                        currentResult = data.result;
+                        statusEl.style.display = 'none';
+                        saveToHistory(currentResult);
+                        renderResults(currentResult);
+                    }
                 }
             }
+        } else {
+            // Fallback: regular POST
+            statusEl.innerHTML = '<span class="spinner"></span> Inspecting key...';
+            resp = await fetch(`${API_BASE}/api/inspect`, {
+                method: 'POST',
+                headers,
+                body: JSON.stringify(body),
+            });
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+            currentResult = await resp.json();
+            statusEl.style.display = 'none';
+            saveToHistory(currentResult);
+            renderResults(currentResult);
         }
     } catch (err) {
         statusEl.className = 'status error';
