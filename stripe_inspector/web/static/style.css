@@ -23,6 +23,156 @@ body {
     min-height: 100vh;
 }
 
+/* Top Navigation */
+.top-nav {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.top-nav-inner {
+    max-width: 1100px;
+    margin: 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 48px;
+}
+
+.nav-brand {
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--text-bright);
+    text-decoration: none;
+}
+
+.nav-brand span { color: var(--accent); }
+
+.top-nav-right {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+}
+
+.top-nav-right a {
+    font-size: 13px;
+    color: var(--text-dim);
+    text-decoration: none;
+    transition: color 0.15s;
+}
+
+.top-nav-right a:hover { color: var(--text-bright); }
+
+/* Ethics banner */
+.ethics-banner {
+    background: rgba(245, 158, 11, 0.08);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.15);
+    padding: 8px 20px;
+    text-align: center;
+    font-size: 12px;
+    color: var(--yellow);
+}
+
+.ethics-banner strong {
+    color: var(--yellow);
+}
+
+/* Modal */
+.modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.6);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+
+.modal-overlay.open {
+    display: flex;
+}
+
+.modal-box {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    max-width: 640px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+}
+
+.modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+}
+
+.modal-header h3 {
+    font-size: 16px;
+    font-weight: 600;
+    color: var(--text-bright);
+}
+
+.modal-close {
+    font-size: 22px;
+    color: var(--text-dim);
+    cursor: pointer;
+    line-height: 1;
+}
+
+.modal-close:hover { color: var(--text-bright); }
+
+.modal-body {
+    padding: 20px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.7;
+}
+
+.modal-body h4 {
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text-bright);
+    margin-top: 16px;
+    margin-bottom: 6px;
+}
+
+.modal-body h4:first-child { margin-top: 0; }
+
+.modal-body p { margin-bottom: 8px; }
+
+.modal-body ul {
+    margin: 0 0 8px 20px;
+}
+
+.modal-body li { margin-bottom: 4px; }
+
+.modal-body pre {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    overflow-x: auto;
+    margin: 8px 0;
+}
+
+.modal-body code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent);
+}
+
+.modal-body pre code {
+    color: var(--text);
+}
+
 .container {
     max-width: 1100px;
     margin: 0 auto;
@@ -48,6 +198,8 @@ body {
     color: var(--text-dim);
     font-size: 14px;
 }
+
+/* (header-links moved to top-nav) */
 
 /* Input Section */
 .input-section {
@@ -92,6 +244,7 @@ body {
 
 .input-group input::placeholder { color: var(--text-dim); }
 
+/* Buttons */
 .btn {
     padding: 12px 24px;
     border: none;
@@ -120,6 +273,11 @@ body {
 .btn-outline:hover {
     background: var(--bg-input);
     border-color: var(--accent);
+}
+
+.btn-xs {
+    padding: 3px 10px !important;
+    font-size: 11px !important;
 }
 
 /* Toolbar */
@@ -220,8 +378,7 @@ body {
     gap: 8px;
 }
 
-/* (old modules-section removed — now uses .collapsible + .modules-grid-inner)
-
+/* Module chips — no inputs, just styled spans */
 .module-chip {
     display: inline-block;
     padding: 5px 12px;
@@ -250,11 +407,6 @@ body {
     display: flex;
     gap: 6px;
     margin-left: auto;
-}
-
-.btn-xs {
-    padding: 3px 10px !important;
-    font-size: 11px !important;
 }
 
 /* Status */
@@ -404,9 +556,34 @@ body {
     margin-top: 20px;
 }
 
+/* Light Theme */
+body.light-theme {
+    --bg: #f5f5f7;
+    --bg-card: #ffffff;
+    --bg-input: #f0f0f2;
+    --border: #d4d4d8;
+    --text: #27272a;
+    --text-dim: #71717a;
+    --text-bright: #09090b;
+}
+
+body.light-theme .top-nav { background: #fff; border-color: #e4e4e7; }
+body.light-theme .ethics-banner { background: rgba(245,158,11,0.06); border-color: rgba(245,158,11,0.12); }
+body.light-theme .module-card { border-color: #e4e4e7; }
+body.light-theme .modal-box { background: #fff; border-color: #e4e4e7; }
+body.light-theme .modal-header { border-color: #e4e4e7; }
+body.light-theme .modal-body pre { background: #f4f4f5; border-color: #e4e4e7; }
+body.light-theme .data-table th { border-color: #e4e4e7; }
+body.light-theme .data-table td { border-color: #f4f4f5; }
+body.light-theme .toolbar { border-color: #e4e4e7; }
+body.light-theme .collapsible { border-color: #e4e4e7; }
+body.light-theme .toggle-track { background: #e4e4e7; border-color: #d4d4d8; }
+body.light-theme .toggle-thumb { background: #a1a1aa; }
+
 /* Responsive */
 @media (max-width: 640px) {
-    .input-row { flex-direction: column; }
+    .toolbar { flex-wrap: wrap; gap: 8px; }
+    .toolbar-left, .toolbar-right { gap: 8px; }
     .permissions-bar { flex-wrap: wrap; }
     .kv-key { width: 140px; }
 }

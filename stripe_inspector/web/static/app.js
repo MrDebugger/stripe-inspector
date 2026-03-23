@@ -53,32 +53,56 @@ async function runInspection() {
     resultsEl.style.display = 'none';
     statusEl.style.display = 'block';
     statusEl.className = 'status';
-    statusEl.innerHTML = '<span class="spinner"></span> Inspecting key...';
+    statusEl.innerHTML = '<span class="spinner"></span> Connecting...';
+
+    const total = document.querySelectorAll('.module-chip[data-module]').length;
+    const deep = document.getElementById('deepToggle').checked;
 
     const headers = { 'Content-Type': 'application/json' };
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const total = document.querySelectorAll('.module-chip[data-module]').length;
-    const deep = document.getElementById('deepToggle').checked;
     const body = { key };
     if (modules.length < total) body.modules = modules;
     if (deep) body.deep = true;
 
     try {
-        const resp = await fetch(`${API_BASE}/api/inspect`, {
+        const resp = await fetch(`${API_BASE}/api/inspect/stream`, {
             method: 'POST',
             headers,
             body: JSON.stringify(body),
         });
-
         if (!resp.ok) {
             const err = await resp.json().catch(() => ({ detail: `HTTP ${resp.status}` }));
             throw new Error(err.detail || `HTTP ${resp.status}`);
         }
 
-        currentResult = await resp.json();
-        statusEl.style.display = 'none';
-        renderResults(currentResult);
+        const reader = resp.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop();
+
+            for (const line of lines) {
+                if (!line.startsWith('data: ')) continue;
+                const data = JSON.parse(line.slice(6));
+
+                if (data.type === 'progress') {
+                    statusEl.innerHTML = `<span class="spinner"></span> Scanning <strong>${esc(data.module)}</strong>... (${data.current}/${data.total})`;
+                } else if (data.type === 'module') {
+                    // Module completed — could render incrementally here
+                } else if (data.type === 'done') {
+                    currentResult = data.result;
+                    statusEl.style.display = 'none';
+                    renderResults(currentResult);
+                }
+            }
+        }
     } catch (err) {
         statusEl.className = 'status error';
         statusEl.textContent = `Error: ${err.message}`;
@@ -159,19 +183,23 @@ function renderResults(result) {
         html += `</div></div>`;
     }
 
-    // Rate limit
+    // Footer: rate limit + duration
     const rl = result.rate_limit || {};
-    if (rl.total_requests) {
-        html += `<div style="font-size:12px;color:var(--text-dim);margin-top:12px;">`;
-        html += `API requests: ${rl.total_requests}`;
-        if (rl.remaining !== null && rl.remaining !== undefined) html += ` | Rate limit remaining: ${rl.remaining}`;
-        html += `</div>`;
+    const dur = result.duration_seconds;
+    let footerParts = [];
+    if (rl.total_requests) footerParts.push(`API requests: ${rl.total_requests}`);
+    if (rl.remaining !== null && rl.remaining !== undefined) footerParts.push(`Rate limit remaining: ${rl.remaining}`);
+    if (dur !== undefined) footerParts.push(`Scan completed in ${dur}s`);
+    if (footerParts.length) {
+        html += `<div style="font-size:12px;color:var(--text-dim);margin-top:12px;">${footerParts.join(' | ')}</div>`;
     }
 
     // Actions
     html += `<div class="actions-bar">
+        <button class="btn btn-outline" onclick="copyJSON()">Copy JSON</button>
         <button class="btn btn-outline" onclick="downloadJSON()">Download JSON</button>
         <button class="btn btn-outline" onclick="downloadReport()">Download HTML Report</button>
+        <button class="btn btn-outline" onclick="shareReport()">Share Report</button>
     </div>`;
 
     resultsContent.innerHTML = html;
@@ -180,10 +208,12 @@ function renderResults(result) {
 function renderModuleData(name, data) {
     if (name === 'account') return renderKV(data);
     if (name === 'balance') return renderBalance(data);
+    if (name === 'permission_scan') return renderPermissionScan(data);
 
     // Find the list key
     const listKeys = ['customers', 'charges', 'intents', 'products', 'payouts',
-                      'subscriptions', 'invoices', 'endpoints', 'events', 'accounts'];
+                      'subscriptions', 'invoices', 'endpoints', 'events', 'accounts',
+                      'disputes', 'refunds', 'transactions', 'coupons'];
     const listKey = listKeys.find(k => Array.isArray(data[k]));
 
     if (listKey && data[listKey].length > 0) {
@@ -196,6 +226,32 @@ function renderModuleData(name, data) {
 
     if (listKey) return `<div style="color:var(--text-dim);font-size:13px;">None found</div>`;
     return renderKV(data);
+}
+
+function renderPermissionScan(data) {
+    const allowed = data.allowed || [];
+    const denied = data.denied || [];
+    const errors = data.errors || [];
+
+    let html = `<div style="font-size:13px;margin-bottom:12px;">
+        <span style="color:var(--green);">${data.allowed_count || 0} allowed</span> /
+        <span style="color:var(--red);">${data.denied_count || 0} denied</span> /
+        <span style="color:var(--yellow);">${data.error_count || 0} errors</span>
+        out of ${data.total_endpoints || 0} endpoints
+    </div>`;
+
+    html += '<table class="data-table"><tr><th>Status</th><th>Endpoint</th></tr>';
+    for (const ep of allowed) {
+        html += `<tr><td style="color:var(--green);font-weight:600;">OK</td><td>${esc(ep)}</td></tr>`;
+    }
+    for (const ep of denied) {
+        html += `<tr><td style="color:var(--red);font-weight:600;">NO</td><td>${esc(ep)}</td></tr>`;
+    }
+    for (const err of errors) {
+        html += `<tr><td style="color:var(--yellow);font-weight:600;">??</td><td>${esc(err.endpoint || '')} (${esc(err.error || '')})</td></tr>`;
+    }
+    html += '</table>';
+    return html;
 }
 
 function renderKV(obj, prefix = '') {
@@ -285,6 +341,87 @@ function download(blob, filename) {
     a.click();
     URL.revokeObjectURL(url);
 }
+
+function copyJSON() {
+    if (!currentResult) return;
+    const text = JSON.stringify(currentResult, null, 2);
+    const size = new Blob([text]).size;
+
+    if (size > 500000) {
+        if (!confirm(`Result is ${(size / 1024).toFixed(0)}KB. Copy to clipboard anyway?`)) return;
+    }
+
+    const btn = event.target;
+    const orig = btn.textContent;
+
+    function onSuccess() {
+        btn.textContent = 'Copied!';
+        btn.style.color = 'var(--green)';
+        btn.style.borderColor = 'var(--green)';
+        setTimeout(() => { btn.textContent = orig; btn.style.color = ''; btn.style.borderColor = ''; }, 1500);
+    }
+
+    // Try modern API first, fall back to execCommand
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(onSuccess).catch(() => fallbackCopy(text, onSuccess));
+    } else {
+        fallbackCopy(text, onSuccess);
+    }
+}
+
+function fallbackCopy(text, onSuccess) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;left:-9999px;top:-9999px;opacity:0;';
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+        document.execCommand('copy');
+        onSuccess();
+    } catch (e) {
+        alert('Copy failed. Try Ctrl+C manually.');
+    }
+    document.body.removeChild(ta);
+}
+
+async function shareReport() {
+    if (!currentResult) return;
+    const token = tokenInput.value.trim();
+    const headers = { 'Content-Type': 'application/json' };
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+
+    try {
+        const resp = await fetch(`${API_BASE}/api/report`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ result: currentResult }),
+        });
+        const html = await resp.text();
+        const blob = new Blob([html], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+    } catch (err) {
+        alert('Failed to generate report: ' + err.message);
+    }
+}
+
+// Theme toggle
+function toggleTheme() {
+    const body = document.body;
+    body.classList.toggle('light-theme');
+    const isLight = body.classList.contains('light-theme');
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+    document.getElementById('themeIcon').textContent = isLight ? '🌙' : '☀️';
+}
+
+// Load saved theme
+(function() {
+    if (localStorage.getItem('theme') === 'light') {
+        document.body.classList.add('light-theme');
+        const icon = document.getElementById('themeIcon');
+        if (icon) icon.textContent = '🌙';
+    }
+})();
 
 function esc(str) {
     const d = document.createElement('div');

@@ -9,6 +9,27 @@
     <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+    <!-- Top nav bar -->
+    <nav class="top-nav">
+        <div class="top-nav-inner">
+            <div class="top-nav-left">
+                <a href="/" class="nav-brand">Stripe<span>Inspector</span></a>
+            </div>
+            <div class="top-nav-right">
+                <a href="#" onclick="document.getElementById('privacyModal').classList.add('open'); return false;">Privacy</a>
+                <a href="#" onclick="document.getElementById('instructionsModal').classList.add('open'); return false;">Docs</a>
+                <a href="https://github.com/mrdebugger/stripe-inspector" target="_blank">GitHub</a>
+                <a href="https://pypi.org/project/stripe-inspector/" target="_blank">PyPI</a>
+                <a href="#" onclick="toggleTheme(); return false;" id="themeIcon" title="Toggle theme">☀️</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Ethical use banner -->
+    <div class="ethics-banner">
+        <strong>Ethical Use Only</strong> &mdash; This tool is for authorized penetration testing, security research, and educational purposes only. Only test keys you own or have explicit written permission to test.
+    </div>
+
     <div class="container">
         <div class="header">
             <h1>Stripe<span>Inspector</span></h1>
@@ -84,6 +105,99 @@
 
         <div class="results" id="results">
             <div id="resultsContent"></div>
+        </div>
+    </div>
+
+    <!-- Privacy Modal -->
+    <div class="modal-overlay" id="privacyModal" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Privacy &amp; Disclaimer</h3>
+                <span class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h4>No Data Collection</h4>
+                <p>StripeInspector does not store, log, or transmit any API keys entered into this tool. All requests go directly from the server to the Stripe API. No keys are saved to disk, databases, or any external service.</p>
+
+                <h4>Self-Hosted</h4>
+                <p>This tool is designed to be self-hosted. When you run <code>stripe-inspector serve</code>, the server runs on your own machine. Your keys never leave your network unless you choose to expose the server.</p>
+
+                <h4>Ethical Use Only</h4>
+                <p>This tool is intended exclusively for:</p>
+                <ul>
+                    <li>Authorized penetration testing engagements</li>
+                    <li>Bug bounty programs</li>
+                    <li>Security research and education</li>
+                    <li>Testing your own API keys</li>
+                </ul>
+                <p>Only use this tool on API keys you own or have <strong>explicit written permission</strong> to test. Unauthorized access to third-party systems is illegal.</p>
+
+                <h4>No Warranty</h4>
+                <p>This tool is provided "as is" without warranty of any kind. The authors assume no liability for any damage, loss, or legal consequences resulting from the use or misuse of this tool. You are solely responsible for ensuring your use complies with all applicable laws and regulations.</p>
+
+                <h4>Key Masking</h4>
+                <p>All reports and outputs automatically mask API keys, showing only the first 8 and last 4 characters. This reduces the risk of accidental key exposure in shared reports.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Instructions/Docs Modal -->
+    <div class="modal-overlay" id="instructionsModal" onclick="if(event.target===this)this.classList.remove('open')">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Documentation</h3>
+                <span class="modal-close" onclick="this.closest('.modal-overlay').classList.remove('open')">&times;</span>
+            </div>
+            <div class="modal-body">
+                <h4>Installation</h4>
+                <pre><code>pip install stripe-inspector</code></pre>
+
+                <h4>CLI Usage</h4>
+                <pre><code># Inspect a key (all modules)
+stripe-inspector inspect sk_test_xxxx
+
+# JSON output
+stripe-inspector inspect sk_test_xxxx --output json
+
+# Generate HTML report
+stripe-inspector inspect sk_test_xxxx --report findings.html
+
+# Deep scan (fetch all pages)
+stripe-inspector inspect sk_test_xxxx --deep
+
+# Specific modules only
+stripe-inspector inspect sk_test_xxxx --modules account,customers,charges
+
+# Batch scan multiple keys
+stripe-inspector batch keys.txt --report-dir ./reports</code></pre>
+
+                <h4>Web UI</h4>
+                <pre><code># Start local server
+stripe-inspector serve
+
+# Custom port with auth
+stripe-inspector serve --port 9000 --token mysecret</code></pre>
+
+                <h4>Modules (17)</h4>
+                <p>account, balance, customers, charges, payment_intents, products, payouts, subscriptions, invoices, webhooks, events, connected, disputes, refunds, balance_transactions, coupons, permission_scan</p>
+
+                <h4>Key Types Supported</h4>
+                <table class="data-table" style="margin-top:8px;">
+                    <tr><th>Prefix</th><th>Type</th><th>Risk</th></tr>
+                    <tr><td><code>sk_test_</code></td><td>Secret test</td><td style="color:var(--yellow)">Low</td></tr>
+                    <tr><td><code>sk_live_</code></td><td>Secret live</td><td style="color:var(--red)">High</td></tr>
+                    <tr><td><code>rk_test_</code></td><td>Restricted test</td><td style="color:var(--yellow)">Low</td></tr>
+                    <tr><td><code>rk_live_</code></td><td>Restricted live</td><td style="color:var(--yellow)">Medium</td></tr>
+                </table>
+
+                <h4>Output Formats</h4>
+                <ul>
+                    <li><strong>Table</strong> — colored terminal tables (default)</li>
+                    <li><strong>JSON</strong> — pipe to jq, scripts, etc.</li>
+                    <li><strong>HTML Report</strong> — standalone file for sharing</li>
+                    <li><strong>PDF Report</strong> — <code>pip install stripe-inspector[pdf]</code></li>
+                </ul>
+            </div>
         </div>
     </div>
 

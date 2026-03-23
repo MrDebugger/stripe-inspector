@@ -84,6 +84,8 @@ class StripeInspector:
                 "masked_key": self.masked_key,
             }
 
+        start_time = time.time()
+
         result = {
             "key_type": self.key_type,
             "masked_key": self.masked_key,
@@ -141,5 +143,8 @@ class StripeInspector:
         # Rate limit info
         from stripe_inspector.modules._base import get_rate_limit_info
         result["rate_limit"] = get_rate_limit_info()
+
+        # Scan duration
+        result["duration_seconds"] = round(time.time() - start_time, 2)
 
         return result

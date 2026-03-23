@@ -11,6 +11,7 @@ from rich.table import Table
 
 from stripe_inspector import __version__
 from stripe_inspector.core import StripeInspector, ALL_MODULES
+from stripe_inspector.export import result_to_csv
 from stripe_inspector.report import generate_html_report
 from stripe_inspector.utils import format_timestamp
 
@@ -268,13 +269,18 @@ def display_results(result: dict):
         console.print(pii_table)
         console.print()
 
-    # Rate limit info
+    # Footer: rate limit + duration
+    footer_parts = []
     rl = result.get("rate_limit", {})
     if rl.get("total_requests"):
-        parts = [f"[dim]API requests: {rl['total_requests']}[/dim]"]
+        footer_parts.append(f"API requests: {rl['total_requests']}")
         if rl.get("remaining") is not None:
-            parts.append(f"[dim]Rate limit remaining: {rl['remaining']}[/dim]")
-        console.print("  ".join(parts))
+            footer_parts.append(f"Rate limit remaining: {rl['remaining']}")
+    dur = result.get("duration_seconds")
+    if dur is not None:
+        footer_parts.append(f"Scan completed in {dur}s")
+    if footer_parts:
+        console.print(f"[dim]{' | '.join(footer_parts)}[/dim]")
         console.print()
 
 
@@ -284,8 +290,10 @@ def inspect(
     output: str = typer.Option("table", "--output", "-o", help="Output format: table, json"),
     report: Optional[str] = typer.Option(None, "--report", "-r", help="Generate HTML report to file"),
     pdf: Optional[str] = typer.Option(None, "--pdf", help="Generate PDF report to file"),
+    csv_dir: Optional[str] = typer.Option(None, "--csv", help="Export per-module CSV files to directory"),
     modules: Optional[str] = typer.Option(None, "--modules", "-m", help="Comma-separated modules to run"),
     deep: bool = typer.Option(False, "--deep", "-d", help="Fetch all pages (not just first 100)"),
+    silent: bool = typer.Option(False, "--silent", "-s", help="Suppress table output (use with --report/--csv/--json)"),
     no_color: bool = typer.Option(False, "--no-color", help="Disable colored output"),
 ):
     """Inspect a Stripe API key and enumerate accessible data."""
@@ -340,14 +348,14 @@ def inspect(
 
     if output == "json":
         print(json.dumps(result, indent=2, default=str))
-    else:
+    elif not silent:
         display_results(result)
 
     if report:
         html = generate_html_report(result)
         with open(report, "w", encoding="utf-8") as f:
             f.write(html)
-        console.print(f"\n[green]HTML report saved to {report}[/green]")
+        console.print(f"[green]HTML report saved to {report}[/green]")
 
     if pdf:
         try:
@@ -358,6 +366,16 @@ def inspect(
             console.print(f"[green]PDF report saved to {pdf}[/green]")
         except ImportError as e:
             console.print(f"[red]{e}[/red]")
+
+    if csv_dir:
+        import os
+        os.makedirs(csv_dir, exist_ok=True)
+        csvs = result_to_csv(result)
+        for mod_name, csv_content in csvs.items():
+            path = os.path.join(csv_dir, f"{mod_name}.csv")
+            with open(path, "w", encoding="utf-8", newline="") as f:
+                f.write(csv_content)
+        console.print(f"[green]CSV files saved to {csv_dir}/ ({len(csvs)} files)[/green]")
 
 
 @app.command()
@@ -475,6 +493,101 @@ def batch(
         print(json.dumps(all_results, indent=2, default=str))
 
     console.print(f"\n[bold green]Batch complete: {len(all_results)}/{len(keys)} keys inspected.[/bold green]")
+
+
+@app.command()
+def diff(
+    key1: str = typer.Argument(..., help="First Stripe API key"),
+    key2: str = typer.Argument(..., help="Second Stripe API key"),
+    modules: Optional[str] = typer.Option(None, "--modules", "-m", help="Comma-separated modules to run"),
+):
+    """Compare permissions and data between two Stripe keys."""
+    module_list = None
+    if modules:
+        module_list = [m.strip() for m in modules.split(",")]
+
+    # Default to permission_scan for diff
+    if not module_list:
+        module_list = ["account", "permission_scan"]
+
+    console.print("[bold]Inspecting key 1...[/bold]")
+    i1 = StripeInspector(key1, modules=module_list)
+    if not i1.validate_key():
+        console.print("[red]Key 1: Invalid format[/red]")
+        raise typer.Exit(1)
+    r1 = i1.inspect()
+
+    console.print("[bold]Inspecting key 2...[/bold]")
+    i2 = StripeInspector(key2, modules=module_list)
+    if not i2.validate_key():
+        console.print("[red]Key 2: Invalid format[/red]")
+        raise typer.Exit(1)
+    r2 = i2.inspect()
+
+    # Display comparison
+    console.print()
+    console.print(Panel(
+        f"Key 1: [cyan]{r1['masked_key']}[/cyan]  ({r1.get('key_type', '?')})\n"
+        f"Key 2: [cyan]{r2['masked_key']}[/cyan]  ({r2.get('key_type', '?')})",
+        title="[bold]Diff[/bold]",
+        border_style="bright_blue",
+    ))
+
+    # Compare permissions
+    p1 = r1.get("permissions", {})
+    p2 = r2.get("permissions", {})
+    all_mods = sorted(set(list(p1.keys()) + list(p2.keys())))
+
+    if all_mods:
+        table = Table(show_header=True, box=None, padding=(0, 2))
+        table.add_column("Module", style="bold")
+        table.add_column("Key 1")
+        table.add_column("Key 2")
+        table.add_column("Match")
+
+        for mod in all_mods:
+            v1 = p1.get(mod, "-")
+            v2 = p2.get(mod, "-")
+            c1 = "green" if v1 == "allowed" else "red" if v1 == "denied" else "yellow"
+            c2 = "green" if v2 == "allowed" else "red" if v2 == "denied" else "yellow"
+            match = "[green]=[/green]" if v1 == v2 else "[red]![/red]"
+            table.add_row(mod, f"[{c1}]{v1}[/{c1}]", f"[{c2}]{v2}[/{c2}]", match)
+
+        console.print("\n[bold]Permission Comparison:[/bold]")
+        console.print(table)
+
+    # Compare permission_scan if available
+    ps1 = r1.get("modules", {}).get("permission_scan", {})
+    ps2 = r2.get("modules", {}).get("permission_scan", {})
+    if ps1.get("success") and ps2.get("success"):
+        a1 = set(ps1["data"].get("allowed", []))
+        a2 = set(ps2["data"].get("allowed", []))
+        only1 = sorted(a1 - a2)
+        only2 = sorted(a2 - a1)
+        both = sorted(a1 & a2)
+
+        console.print(f"\n[bold]Endpoint Access:[/bold]")
+        console.print(f"  [green]Both keys:[/green] {len(both)} endpoints")
+        if only1:
+            console.print(f"  [cyan]Only key 1:[/cyan] {', '.join(only1)}")
+        if only2:
+            console.print(f"  [cyan]Only key 2:[/cyan] {', '.join(only2)}")
+        if not only1 and not only2:
+            console.print(f"  [dim]Keys have identical access[/dim]")
+
+    # Compare account info
+    ac1 = r1.get("modules", {}).get("account", {})
+    ac2 = r2.get("modules", {}).get("account", {})
+    if ac1.get("success") and ac2.get("success"):
+        d1 = ac1["data"]
+        d2 = ac2["data"]
+        same_account = d1.get("id") == d2.get("id")
+        console.print(f"\n[bold]Account:[/bold] {'[green]Same account[/green]' if same_account else '[yellow]Different accounts[/yellow]'}")
+        if not same_account:
+            console.print(f"  Key 1: {d1.get('display_name', 'N/A')} ({d1.get('id', 'N/A')})")
+            console.print(f"  Key 2: {d2.get('display_name', 'N/A')} ({d2.get('id', 'N/A')})")
+
+    console.print()
 
 
 if __name__ == "__main__":

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.5.0] - 2026-03-24
+
+### Added
+- **CSV export** — `--csv <dir>` exports per-module CSV files
+- **Silent mode** — `--silent` suppresses table output (for scripted use with --report/--csv)
+- **Diff command** — `stripe-inspector diff key1 key2` compares permissions and endpoint access between two keys
+- **Scan duration timer** — shows how long the scan took in CLI and web UI
+- **Copy JSON** button in web UI with clipboard fallback for HTTP
+- **Share Report** — opens HTML report in new browser tab
+- **Dark/Light theme toggle** — persists to localStorage
+- **Top navigation bar** — Privacy, Docs, GitHub, PyPI links
+- **Ethics banner** — yellow warning about authorized use only
+- **Privacy modal** — no data collection, self-hosted, key masking, no warranty
+- **Docs modal** — installation, CLI usage, modules, key types, output formats
+- **SSE streaming** — web UI shows real-time progress as each module completes (POST-based, key never in URL)
+- **Permission scan renderer** — web UI now properly displays OK/NO/error per endpoint
+
+### Fixed
+- Module chips in web UI replaced with data-attribute spans (no more native checkbox rendering)
+- Permission scan showing 0/0/0 in web UI (missing dedicated renderer)
+- Key no longer sent as GET parameter to SSE endpoint (moved to POST body)
+
 ## [0.4.0] - 2026-03-24
 
 ### Added
