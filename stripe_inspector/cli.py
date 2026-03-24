@@ -366,6 +366,9 @@ def inspect(
             console.print(f"[green]PDF report saved to {pdf}[/green]")
         except ImportError as e:
             console.print(f"[red]{e}[/red]")
+        except OSError as e:
+            console.print(f"[red]PDF generation failed: {e}[/red]")
+            console.print("[dim]WeasyPrint requires system libraries (GTK/Pango). Works on Linux/Mac. On Windows, install GTK3 runtime or use --report for HTML instead.[/dim]")
 
     if csv_dir:
         import os

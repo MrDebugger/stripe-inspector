@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.7.0] - 2026-03-24
+
+### Added
+- Cross-platform PDF reports using xhtml2pdf (works on Windows/Mac/Linux, no system deps)
+- Dedicated PDF template with clean white pentest-report style
+- Friendly error messages for PDF failures
+
+### Changed
+- Replaced weasyprint with xhtml2pdf for PDF generation
+- PDF tables limited to 7 columns, values truncated at 24 chars
+- Section titles tighter to their content
+- Cache-busted static assets with version query string (built once at startup)
+- Web UI JS falls back to POST /api/inspect when SSE streaming unavailable
+
+### Fixed
+- CSS variables resolved for PDF renderer
+- GitHub corner SVG broken path data
+- Column overlap in PDF tables
+
 ## [0.6.0] - 2026-03-24
 
 ### Added
